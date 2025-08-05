@@ -1,17 +1,26 @@
-# Audio Transcribing AI Agent
+# 🎧 Whisper WAV/MP3 Audio Transcription Tool
 
-This project is a simple Python AI agent that transcribes audio files using OpenAI's Whisper model and cleans up the transcription using GPT. It is designed for beginners to learn Python, machine learning workflows, and AI agent structures.
+This is a Python-based command-line tool that uses OpenAI's Whisper model to transcribe audio files (WAV, MP3, M4A) into text.
 
-## Features
+---
 
-- Transcribe audio files to text using Whisper
-- Use GPT to improve transcription readability and grammar
-- Save transcriptions with timestamped filenames
-- Easily configurable for different Whisper models
+## 🧠 Features
 
-## Installation
+- Converts any audio format into standardized WAV
+- Uses Whisper model (`small`) to transcribe audio
+- Automatically saves transcription to a timestamped `.txt` file
+- Fully CLI-based with minimal dependencies
+
+---
+
+## ⚙️ Requirements
+
+- Python 3.8+
+- FFmpeg installed and added to system path
+
+### Python Libraries
+
+Install dependencies:
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/audio-transcribing-ai-agent.git
-cd audio-transcribing-ai-agent
-pip install -r requirements.txt
+pip install torch openai-whisper pydub numpy
