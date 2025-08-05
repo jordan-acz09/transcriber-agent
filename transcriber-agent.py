@@ -1,81 +1,55 @@
-#1 importing of necessary libraries
-import whisper # package for transcription 
-import openai #the LLM of the agent, might be changed
-import os #helps the codebase to navigate through system
-from datetime import datetime #timestamping files
-from dotenv import load_dotenv # 
-import argparse # arge-parse - pass argument or audio path from terminal
+import torch
+import torchaudio
+import whisper
+from datetime import datetime
 import tkinter as tk
 from tkinter import filedialog, messagebox
 
+# Load Whisper model once
+model = whisper.load_model("base")
 
-#2 Configuration - define the settings the program needs - control panel 
-##like setting up a google map gps before a trip to coventry
-openai.api_key = "sk-5678ijklmnopabcd5678ijklmnopabcd5678ijkl" #permission to use gpt from openAi
-whisper_model_size = "base"
-audio_file_path = "" #what audio file to transcribe
-TIMESTAMP = datetime.now().strftime("%Y%m%d_%H%M%S")
-OUTPUT_FILE = f"transcription_{TIMESTAMP}.txt"
 
 def input_audio(file_path):
-    import torchaudio 
+    # Load waveform and sample rate using torchaudio
     waveform, sample_rate = torchaudio.load(file_path)
 
+    # Resample if needed
     if sample_rate != 16000:
         resampler = torchaudio.transforms.Resample(orig_freq=sample_rate, new_freq=16000)
         waveform = resampler(waveform)
-    
-        return waveform
 
-def preprocess_audio(waveform):
+    # Convert to mono by averaging channels if needed
     if waveform.shape[0] > 1:
         waveform = torch.mean(waveform, dim=0, keepdim=True)
 
-    waveform = waveform / waveform.abs().max()
-
-    mel_spec = mel_spectrogram(waveform)
-
-    log_mel_spec = torchaudio.transforms.AmplitudeToDB()(mel_spec)
-    
-    return log_mel_spec
+    return waveform.squeeze(0)  # Remove channel dim, shape: [num_samples]
 
 
-model = whisper.load_model("base")
+def transcribe_audio(waveform):
+    # Whisper expects numpy array or torch tensor waveform sampled at 16kHz
+    # Convert to numpy for whisper (torch tensor also accepted in latest whisper)
+    audio_np = waveform.numpy()
 
-def transcribe_audio(log_mel_spec):
-    if isinstance(log_mel_spec, torch.tensor):
-        audio_np = log_mel_spec.squeeze().numpy()
+    # Pad or trim audio to fit model input length
+    audio_np = whisper.pad_or_trim(audio_np)
 
-    result = model.transcribe(audio_np) 
-    return result['textt']
+    # Get log mel spectrogram for input
+    mel = whisper.log_mel_spectrogram(torch.from_numpy(audio_np))
 
-    def main():
-        ## file_path = ""
-        file_path = input("Type in audio file path: ")
-        try:
-            waveform = input_audio(file_path)
-        except Exception as e:
-            print(f"Error loading audio: {e}")
-            return 
-
-        waveform = input_audio(file_path)
-        processed_audio = preprocess_audio(waveform)
-        transcript = transcribe_audio(processed_audio)
-        print(transcript)
-    
-    if __name__ == "__main__":
-        main()
-
+    # Transcribe
+    result = model.transcribe(mel)
+    return result['text']
 
 
 def select_file():
     file_path = filedialog.askopenfilename(
-        filetypes=[("Audio Files", "*.wav *.mp3 *.flac")])
+        filetypes=[("Audio Files", "*.wav *.mp3 *.flac *.m4a")]
+    )
     if file_path:
         file_label.config(text=file_path)
-        # Store the path somewhere accessible, e.g., global variable
         global selected_file
         selected_file = file_path
+
 
 def transcribe():
     if not selected_file:
@@ -83,14 +57,14 @@ def transcribe():
         return
     try:
         waveform = input_audio(selected_file)
-        processed_audio = preprocess_audio(waveform)
-        transcript = transcribe_audio(processed_audio)
+        transcript = transcribe_audio(waveform)
         result_text.delete("1.0", tk.END)
         result_text.insert(tk.END, transcript)
     except Exception as e:
         messagebox.showerror("Error", f"Failed to transcribe: {e}")
 
-# Tkinter setup
+
+# Tkinter UI setup
 root = tk.Tk()
 root.title("Audio Transcription App")
 
